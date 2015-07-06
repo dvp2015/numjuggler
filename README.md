@@ -40,3 +40,47 @@ instructions:
 
 There is also a github repo, [numjuggler.docs](https://github.com/inr-kit/numjuggler.docs), related to numjuggler documentation.
 
+## Recently added features
+
+### Version 2.8a.6
+Keyword ``--find`` is added. It helps to find cells with particular properties, for
+example filled with particular material. this keyword must be followed by a string that
+specifies the search criterion. Currently, it has the following syntax:
+
+    --find " type: expr"
+
+where ``type`` defines the type of elements to be searched (currently only ``cell``is implemented) and
+``expr``  is a logical expression.  
+
+#### Examples:
+
+---------------------------
+
+In input ``inp_`` find cells with material 10:
+
+    numjuggler --find "cell: mat == 10" inp_
+
+Double apostrophes are used to prevent shell evaluation. The expression after
+``:`` must be a valid Python logical expression, where ``mat``, ``u`` or
+``rho`` are replaced by cell's correspondent property and evaluated.
+
+----------------------------
+
+Find all non-void cells
+
+    numjuggler --find "cell: mat > 0" inp_ 
+
+-----------------------------
+
+Find cells with density between 10 and 20 gcc:
+
+    numjuggler --find "cell: -20 < rho < -10" inp_
+
+Note that numjuggler is not aware about conversion between concentration and
+density and checks simply the value as specified in the input file. Thus, this
+example has sense only when densities in ``inp_`` are desined in gcc, and all
+cells with density specified as concentration, even if cerrespondent density
+lies within 10 and 20 gcc, will be skipped.
+
+
+
