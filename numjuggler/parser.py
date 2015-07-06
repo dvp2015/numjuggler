@@ -14,7 +14,7 @@ re_prm = re.compile('[it]mp:*[npe]*[=\s]+\S+')
 
 fmt_d = lambda s: '{{:<{}d}}'.format(len(s))
 fmt_g = lambda s: '{{:<{}g}}'.format(len(s))
-fmt_s = lambda s: '{{:<{}s}}'.fromat(len(s))
+fmt_s = lambda s: '{{:<{}s}}'.format(len(s))
 fmt_s = lambda s: '{}'
 
 
@@ -28,8 +28,9 @@ class __CIDClass(object):
           * surface card
           * data card.
 
-    Data cards can be of different type that is defined by the card's first
-    entry. Therefore data cards can be characterized by type of the 2-nd level:
+    2-nd level of card types are for data cards only. Data cards can be of
+    different type that is defined by the card's first entry. Therefore data
+    cards can be characterized by type of the 2-nd level:
           * m cards,
           * f cards,
           * etc.
@@ -104,6 +105,9 @@ class Card(object):
         # are optional.
         self.get_input()
 
+        # Original name
+        self.original_name = None
+
     def print_debug(self, comment, key='tihv'):
         d = self.debug
         if d:
@@ -123,6 +127,10 @@ class Card(object):
         """
 
         mline = ''.join(self.lines)
+        # TODO: put check for bad characters to separate option.
+        #       And do not complain about bad characters at all.
+        #       This approach fits better to principle "I don't know
+        #       what your input defines, but can change numbers."
         bad_chars = '\t'
         for c in bad_chars:
             if c in mline:
@@ -151,7 +159,7 @@ class Card(object):
                     if is_commented(l):
                         tmpl.append(l)
                     else:
-                        # entries optionally delimited from comments by $ or &
+                        # Check if there is comment after $ or &:
                         d1 = l.find(' $') # requires that delimiters prefixed with space-
                         d2 = l.find(' &')
                         if -1 < d1 and -1 < d2:
@@ -185,15 +193,15 @@ class Card(object):
         if self.ctype == CID.cell and 'like' not in inpt:
             d['~'] = [] # float values in cells
 
-            tokens = inpt.replace('=', ' ').split()
             # material density
-            cell, mat, rho = tokens[:3]
-            if int(mat) != 0:
-                for s in (cell, mat, rho):
-                    inpt = inpt.replace(s, '~', 1)
-                inpt = inpt.replace('~', cell, 1)
-                inpt = inpt.replace('~', mat, 1)
-                d['~'].append(rho)
+            ### tokens = inpt.replace('=', ' ').split()
+            ### cell, mat, rho = tokens[:3]
+            ### if int(mat) != 0:
+            ###     for s in (cell, mat, rho):
+            ###         inpt = inpt.replace(s, '~', 1)
+            ###     inpt = inpt.replace('~', cell, 1)
+            ###     inpt = inpt.replace('~', mat, 1)
+            ###     d['~'].append(rho)
 
             # imp and tmp parameters:
             for s in re_prm.findall(inpt):
@@ -229,8 +237,10 @@ class Card(object):
         self._protect_nums()
         if self.ctype == CID.cell:
             inpt, vt = _split_cell(self.input)
+            self.original_name = vt[0][0]
         elif self.ctype == CID.surface:
             inpt, vt = _split_surface(self.input)
+            self.original_name = vt[0][0]
         elif self.ctype == CID.data:
             inpt, vt, dtype = _split_data(self.input)
             self.dtype = dtype
@@ -386,11 +396,18 @@ def _split_cell(input_):
         fmts.append(fmt_d(js))
 
         # get material and density.
-        # Density, if specified in cells card, should be allready hidden
+        ### Density, if specified in cells card, should be allready hidden
         ms = t.pop(0)
         inpt = inpt.replace(ms, tp, 1)
         vals.append((int(ms), 'mat'))
         fmts.append(fmt_d(ms))
+
+        ### get material density, if any
+        if vals[-1][0] != 0:
+            ds = t.pop(0)
+            inpt = inpt.replace(ds, tp, 1)
+            vals.append((ds, 'rho'))
+            fmts.append(fmt_s(ds))
 
         # Get geometry and parameters blocks I assume that geom and param
         # blocks are separated by at least one space, so there will be an

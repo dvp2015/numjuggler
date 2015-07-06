@@ -214,6 +214,7 @@ def main():
     p.add_argument('--mode', type=str, help='Execution mode, "renum" by default', choices=['renum', 'info', 'wrap', 'uexp', 'rems'], default='renum')
     p.add_argument('--debug', help='Additional output for debugging', action='store_true')
     p.add_argument('--log', type=str, help='Log file.', default='')
+    p.add_argument('--find', type=str, help='Find elements', default='')
 
     # parse help option in another parser:
     ph = ap.ArgumentParser(add_help=False)
@@ -237,6 +238,20 @@ def main():
 
         # process input file only once:
         cards = list(mp.get_cards(args.inp, debuglog))
+        if args.find != '':
+            # parse find expression:
+            what, cond = args.find.split(':')
+            what = getattr(mp.CID, what.strip())
+            cond = cond.strip()
+            for c in cards:
+                c.get_values()
+                print c.ctype, mp.CID.get_name(c.ctype)
+                if c.ctype == what:
+                    for v, t in c.values:
+                        if t in cond and eval(cond.replace(t, str(v))):
+                            print mp.CID.get_name(c.ctype), c.original_name, t, v
+                            break
+            exit()
 
         if args.mode == 'info':
             indent = ' '*8
