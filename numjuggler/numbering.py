@@ -9,7 +9,7 @@ class LikeFunction(object):
 
         > f = LikeFunction(d)
         > n_new = f(n_old, 'c')
-    
+
     This callable is used as a mapping for cell, surface, material, etc numbers in an MCNP input file.
 
     The d argument of the constructor is a dictionary of the following form:
@@ -128,14 +128,14 @@ def get_numbers(scards):
 def get_indices(scards):
     """
     Return a dictionary that can be used as an argument for the LikeFunction
-    class. 
-    
+    class.
+
     This dictionary describes mapping that maps cell, surface, material and
     universe numbers to their indices -- as they appear in the MCNP input file
     orig.
     """
     # get list of numbers as they appear in input
-    d = get_numbers(scards) 
+    d = get_numbers(scards)
 
     res = {} # resulting dictionaries of the form number: index
     for t, vl in d.items():
@@ -153,6 +153,18 @@ def get_indices(scards):
 
 
 def _get_ranges_from_set(nn):
+    """
+    Yields ranges that cover all elements in nn.
+
+    nn is a set of integers. Yielded range can be of length 1 or more.
+
+    For example, for nn = {1, 3, 4, 5, 7}, the following ranges will be
+    yielded:
+
+        (1, 1)    # single-element range, since there is no element 2 in nn
+        (3, 5)    # this range covers elements 3, 4 and 5 in nn
+        (7, 7)    # another single-element range.
+    """
     nnl = sorted(nn)
     if nnl:                         # nnl can be empty
         if filter(lambda e: not isinstance(e, int), nn):
@@ -174,7 +186,7 @@ def _get_ranges_from_set(nn):
 
 def read_map_file(fname):
     """
-    Read map file and return functions to be used for mapping. 
+    Read map file and return functions to be used for mapping.
 
     Map file format:
 
@@ -199,10 +211,10 @@ def read_map_file(fname):
                 t = td[ll[0]]
                 rs, os = ll[1:].split(':')
                 rs = rs.replace(' ', '') # remove spaces from left part
-                os = os.split()[0]       # take into account only first entry in the right part. 
+                os = os.split()[0]       # take into account only first entry in the right part.
                 if rs == '':
                     # this is line with default dn. os is always an increment.
-                    d[t][0] = int(os) 
+                    d[t][0] = int(os)
                 else:
                     if '--' in rs:
                         # there are two entries in the range definition.
@@ -217,7 +229,7 @@ def read_map_file(fname):
                     else:
                         dn = int(os) - n1
                     d[t][1].append((n1, n2, dn))
-    return d 
+    return d
 
 
 

@@ -229,6 +229,7 @@ def main():
             print 'No help for ', harg.h
             print 'Available help options: ', dhelp_keys
     else:
+        indent = ' '*8
         args = p.parse_args(clo)
         if args.debug:
             debuglog = open('debug.juggler.' + args.inp, 'w')
@@ -243,18 +244,35 @@ def main():
             what, cond = args.find.split(':')
             what = getattr(mp.CID, what.strip())
             cond = cond.strip()
-            for c in cards:
+
+            # find cells
+            res = {} # result is a dictionary v: set of cells, where
+                     # v is the value that satisfies condition cond
+            for c in filter(lambda c: c.ctype == what, cards):
                 c.get_values()
-                print c.ctype, mp.CID.get_name(c.ctype)
-                if c.ctype == what:
-                    for v, t in c.values:
-                        if t in cond and eval(cond.replace(t, str(v))):
-                            print mp.CID.get_name(c.ctype), c.original_name, t, v
-                            break
+                for v, t in c.values:
+                    if t in cond and eval(cond.replace(t, str(v))):
+                        if (v, t) in res.keys():
+                            s = res[(v, t)]
+                        else:
+                            s = set()
+                            res[(v, t)] = s
+                        s.add(c.original_name)
+                        break
+
+            # print output
+            vtl = sorted(res.keys())
+            for v, t in vtl:
+                for c1, c2 in mn._get_ranges_from_set(res[(v, t)]):
+                    print '{}{:>3s}'.format(indent, mp.CID.get_name(what)[0]),
+                    if c1 == c2:
+                        cr = ' {}'.format(c1)
+                    else:
+                        cr = ' {} -- {}'.format(c1, c2)
+                    print '{:<30s}: {} {}'.format(cr, t, v)
             exit()
 
         if args.mode == 'info':
-            indent = ' '*8
             for c in cards:
                 c.get_values()
             d = mn.get_numbers(cards)

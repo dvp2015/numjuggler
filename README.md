@@ -42,7 +42,7 @@ There is also a github repo, [numjuggler.docs](https://github.com/inr-kit/numjug
 
 ## Recently added features
 
-### Version 2.8a.6
+### Version 2.8a
 Keyword ``--find`` is added. It helps to find cells with particular properties, for
 example filled with particular material. this keyword must be followed by a string that
 specifies the search criterion. Currently, it has the following syntax:
