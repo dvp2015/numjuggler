@@ -82,5 +82,13 @@ example has sense only when densities in ``inp_`` are desined in gcc, and all
 cells with density specified as concentration, even if cerrespondent density
 lies within 10 and 20 gcc, will be skipped.
 
+-------------------------------------
+
+Find cells where surface 10 is used:
+
+    numjuggler --find "cell: sur == 10" inp_
+
+
+
 
 

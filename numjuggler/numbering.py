@@ -2,6 +2,8 @@
 Functions to renumber cells, surfaces, etc. in MCNP input file.
 """
 import warnings
+from . names import eID
+
 
 class LikeFunction(object):
     """
@@ -18,7 +20,7 @@ class LikeFunction(object):
         > d['c'] = [dn0, rl]
 
     where dn0 is an integer or callable, and rl is a list of tuples
-    representing ranges and mappring on this range:
+    representing ranges and correspondent mappings:
 
         > rl = [(n1, m1, dn1), (n1, m2, dn2), ...]
 
@@ -31,67 +33,98 @@ class LikeFunction(object):
     callable, the mapping n -> dni(n) is applied.
 
     """
-    def __init__(self, pdict, log=False):
-        self.__p = pdict
-        self.__lf = log   # flag to log or not.
-        self.__ld = {}    # here log is written, if log.
-
+    def __init__(self, pdict, cdict, log=False, debug=None):
+        self.__p = pdict   # renaming rules
+        self.__c = cdict   # changing rules
+        self.__lf = log    # flag to log or not.
+        self.__ld = {}     # here log is written, if log.
+        self.__db = debug  # File to write debug info.
         return
 
-    @staticmethod
-    def __applyD(f, n):
-        if callable(f):
-            return f(n)
-        else:
-            return f
+    def print_debug(self, comment):
+        d = self.__db
+        if d:
+            print >> d, 'Mapping:', comment
 
-    @staticmethod
-    def __applyL(f, n):
-        if callable(f):
-            return f(n)
-        else:
-            return n + int(f)
-
-    def __get_type(self, t):
-        for key in [t, t[0]]:
-            if self.__p.has_key(key):
-                return self.__p[key]
-        else:
-            return None, None
-
-    def __call__(self, n, t):
-        dn0, param = self.__get_type(t)
-        if (dn0, param) == (None, None):
-            # type not found. Do not apply any mapping
+    def rename(self, n, t):
+        # if type t is not in renaming dictionary, do nothing:
+        if t not in self.__p.keys():
             nnew = n
-            # and do not log this mapping
-            return n
-        elif isinstance(param, dict):
-            # param is a dictionary of the form {nold: nnew}
-            nnew = param.get(n, dn0)
-            nnew = self.__applyD(nnew, n)
-        elif isinstance(param, list):
-            # param is a list of ranges
-            for n1, n2, dn in param:
-                if n1 <= n <= n2:
-                    nnew = self.__applyL(dn, n)
+        else:
+            (dln, dinc), lst = self.__p[t]
+            tname = eID(t)
+            self.print_debug('Apply mapping to  {} {}'.format(tname, repr(n)))
+            for ln, rng, inc in lst:
+                try:
+                    in_range = rng[0] <= n <= rng[1] 
+                except:
+                    in_range = n == rng
+                if in_range:
+                    nnew = n + inc
+                    self.print_debug(' {} {} in range {} -> {}'.format(tname, n, rng, nnew))
                     break
+                self.print_debug(' {} {} not in range {}'.format(tname, n, rng))
             else:
-                nnew = self.__applyL(dn0, n)
+                # apply the rest range rule
+                nnew = n + dinc
+                self.print_debug(' {} {} in rest range -> {}'.format(tname, n, nnew))
 
+        # remember pair (t, nnew) if log is necessary.
         if self.__lf:
             ld = self.__ld
-            k = (t, nnew)
-            if ld.has_key(k):
-                if ld[k] != n:
-                    # raise ValueError('Non-injective mapping. ({}, {}) and ({}, {}) are mapped to {}'.format(t, ld[k], t, n, nnew))
-                    warnings.warn('Non-injective mapping. ({}, {}) and ({}, {}) are mapped to {}'.format(t, ld[k], t, n, nnew))
+            if not ld.has_key(t):
+                ld[t] = {}
+            d = ld[t]
+            if d.has_key(nnew):
+                if d[nnew] != n:
+                    warnings.warn('Non-injective mapping: {} {} and {} are both mapped to {}'.format(eID(t), d[nnew], n, nnew))
             else:
-                ld[k] = n
+                d[nnew] = n
+
+
         # check that void material not changed:
-        if t[0].lower() == 'm' and n == 0 and nnew != 0:
-            print 'WARNING: material {} replaced with {}. Add cell density to the resulting input file.'.format(n, nnew)
+        if t == eID.mat:
+            if n == 0 and nnew != 0:
+                print 'WARNING: material {} replaced with {}. Add cell density to the resulting input file.'.format(n, nnew)
+            if n != 0 and nnew == 0:
+                print 'WARNING: material {} replaced with {}. Remove cell density from the resulting input file.'.format(n, nnew)
         return nnew
+
+    def change(self, card):
+        """
+        Change parameters of card, according to cdict.
+        """
+        # find changing rule
+        if card.original_name is None or card.etype not in self.__c.keys():
+            # nothing to change
+            pass
+            self.print_debug(' No change for {}'.format(card.etype, card.original_name))
+        else:
+            (dnl, drule), lst = self.__c[card.etype]
+            card.print_debug('Before change', 'v')
+            for ln, rng, rule in lst + [(dnl, card.original_name, drule)]:
+                self.print_debug(' Change check {} {} {}'.format(ln, rng, rule))
+                try:
+                    in_range = rng[0] <= card.original_name <= rng[1]
+                except:
+                    in_range = rng == card.original_name
+                if in_range:
+                    newvals = []
+                    for v, t in card.values:
+                        newv = rule.pop(t, None)
+                        self.print_debug('{} {} {} -> {}'.format(eID(t), rule, v, newv))
+                        if newv is not None:
+                            newvals.append((newv, t))
+                            self.print_debug(' Change {} {} -> {}'.format(eID(t), v, newv))
+                        else:
+                            newvals.append((v, t))
+                    card.values = newvals
+                    break
+            card.print_debug('After change', 'v')
+
+
+
+
 
     def write_log_as_map(self, fname):
         """
@@ -104,13 +137,13 @@ class LikeFunction(object):
             d[t[0]][n] = nnew
 
         with open(fname, 'w') as f:
-            for t in 'csmu':
-                print >> f, '-'*80
-                for n in sorted(d[t].keys()):
-                    nnew = d[t][n]
-                    if nnew != n:
-                        print >> f, '{} {:>6d}:   {:>6d}'.format(t, nnew, n)
-
+            for t, d in self.__ld.items():
+                print >> f, '-' * 80
+                for nnew in sorted(d.keys()):
+                    n = d[nnew]
+                    if n != nnew:
+                        print >> f, '   {} {:>6d}: {:>6d}'.format(eID(t), nnew, n)
+                 
 
 def get_numbers(scards):
     """
@@ -195,41 +228,154 @@ def read_map_file(fname):
         c200--300: 400    # add 200 to all cell numbers in the range from 200 to 300 (400 without prefix sign means where the new range starts.
         c: 50            # default cell offset. If not specified, it is 0.
     """
-    # type short names and accepted types:
-    td = {'c': 'cel',
-          's': 'sur',
-          'u': 'u',
-          'm': 'mat'}
+    # dictionary with renaming rules. It can have only a subset of names from eID
+    drename = {}
+    for k in eID.values:
+        drename[k] = [('-', 0), []]
 
-    d = {}
-    for k in td.keys():
-        d[td[k]] = [0, []] # default dn and list of ranges.
+    # dictionary with changing rules
+    dchange = {}
+    for k in eID.values:
+        dchange[k] = [('-', {}), []]
+
+    # map file line number, for debug info
+    ln = 0 
     with open(fname, 'r') as f:
         for l in f:
+            ln += 1
             ll = l.lower().lstrip()
-            if ll and ll[0] in td.keys() and ':' in ll:
-                t = td[ll[0]]
-                rs, os = ll[1:].split(':')
-                rs = rs.replace(' ', '') # remove spaces from left part
-                os = os.split()[0]       # take into account only first entry in the right part.
-                if rs == '':
-                    # this is line with default dn. os is always an increment.
-                    d[t][0] = int(os)
+            t, rng, rule = _read_map_line(ll)
+            if t == 0:
+                # t = 0 means that line ll is a commnet. Skip it.
+                continue
+
+            # analyse rng and rule and add to rename or change dictionaries.
+            # Renaming rule can be applied to explicit range or to default one.
+            # Changing rule cannot be applied to default range, only explicit
+            # range can be followed by a changing rule.
+            #
+            # rng is None -- this means default rule
+            # rule is a dictionary. If only one key and in '+-', this is a
+            # rename rule.  (rule[0]=''also meets this condition). Note that rule is a non-empty dictionary, it is checked in _read_map_line()
+            k0, v0 = rule.items()[0]
+            if k0 in '+-':
+                # this is a rename rule
+                if rng is None or k0 == '+':
+                    inc = v0
                 else:
-                    if '--' in rs:
-                        # there are two entries in the range definition.
-                        n1, n2 = map(int, rs.split('--'))
-                    else:
-                        # only one value is given. Means the one-value-range.
-                        n1 = int(rs)
-                        n2 = n1
-                    # in this case, sign matters:
-                    if os[0] in '+-':
-                        dn = int(os)
-                    else:
-                        dn = int(os) - n1
-                    d[t][1].append((n1, n2, dn))
-    return d
+                    n1 = rng if isinstance(rng, int) else rng[0]
+                    inc = v0 - n1
+                if rng is None:
+                    drename[t][0] = (ln, inc)
+                else:
+                    drename[t][1].append((ln, rng, inc))
+            else:
+                # this is a changing rule
+                if rng is None:
+                    dchange[t][0] = (ln, rule)
+                else:
+                    dchange[t][1].append((ln, rng, rule))
+    return drename, dchange
+
+def _read_map_line(ll):
+    """
+    Read one line of the map file.
+
+    THis function contains algorithm to parse map file lines, the read_map_file()
+    functin is just wrapper.
+    """
+
+    # meaningful line is a line that starts one or more characters that
+    # are starting characters of one of the keys in names._eTypes,
+    # and that has ``:`` inside.
+
+    l = ll.lower().lstrip()  # map file is case-insensitive.
+    if ':' not in l:
+        return 0, None, None  # 0 at the 1-st place means that ll is a commnet.
+
+    lp, rp = l.split(':', 1)  # only 1-st : has sense
+    # extract from left part element type and range, if any
+    lpt = lp.split()
+    et = eID(lpt.pop(0), 0)
+    if et == 0:
+        # first token on left part does not correspond to any known element
+        # type
+        return et, None, None 
+    # find range
+    rng = _read_range(' '.join(lpt))
+
+    # right part rp has only one integer entry, or pairs of (name, val).
+    rpl = rp.replace('=', ' ').split()
+    try:
+        i = int(rpl[0])
+        # if no errors, right part represents renaming rule.
+        rule = _read_rename_rule(rpl[0])
+    except ValueError:
+        # assume this is a change rule
+        rule = _read_change_rule(rpl)
+    # Analysis of rng and rule is made in the parent routine, which has access
+    # to the rule-defining dictionaries from all lines.
+
+    # rule can be empty, treat as a comment.
+    if rule:
+        return et, rng, rule
+    else:
+        return 0, None, None
+
+def _read_range(s):
+    """
+    Read range from the line part s
+
+    Returns:
+        None,
+        (n1, n2),
+        n1
+    """
+    if s.strip() == '':
+        # no entries
+        return None 
+    elif '--' in s:
+        # two entries are given:
+        return map(int, s.split('--'))
+    else:
+        # assume that only one integer is given
+        return int(s)
+
+def _read_rename_rule(s):
+    """
+    s is a string representing a signed integer.
+    """
+    if s[0] in '+-':
+        sign = s[0]
+    else:
+        sign = ''
+    val = int(s)
+    return {sign: val} 
+
+def _read_change_rule(tl):
+    """
+    tl is a list of tokens that represent pairs (param, value).
+    """
+    res = {} 
+    while tl:
+        t = tl.pop(0)
+        pt = eID(t, 0)
+        if pt != 0:
+            # this is a valid parameter name
+            try:
+                v = tl.pop(0)
+                res[pt] = v
+            except IndexError:
+                # there are no more tokens in tl. Consider the last one as a
+                # comment.
+                break
+        else:
+            # token is not a valid parameter name. Consider as a comment.
+            break
+    return res
+
+
+
 
 
 

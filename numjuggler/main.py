@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse as ap
+import os.path
 from numjuggler import numbering as mn
 from numjuggler import parser as mp
 
@@ -232,7 +233,14 @@ def main():
         indent = ' '*8
         args = p.parse_args(clo)
         if args.debug:
-            debuglog = open('debug.juggler.' + args.inp, 'w')
+            # args.inp can be a path with folders. Ensure that the prefix
+            # 'debug.juggler' is added to the base filename only.
+            d, f = os.path.split(args.inp)
+            debug_file_name = os.path.join(d, 'debug.juggler.' + f)
+            # print
+            # print 'Debug info written to ', debug_file_name
+            # print
+            debuglog = open(debug_file_name, 'w')
             print >> debuglog, 'command line arguments:', args
         else:
             debuglog = None
@@ -321,7 +329,7 @@ def main():
 
             if args.map:
                 # if map file is given, ignore all -c, -s, -u and -m.
-                dm = mn.read_map_file(args.map)
+                dm, dch = mn.read_map_file(args.map)
 
             else:
                 # number: index dictionary only if needed:
@@ -339,10 +347,11 @@ def main():
                     else:
                         dm[t] = [int(dn), [(0, 0, 0)]] # do not modify zero material
 
-            mapping = mn.LikeFunction(dm, args.log!='')
+            mapping = mn.LikeFunction(dm, dch, args.log!='', debuglog)
 
             for c in cards:
-                c.apply_map(mapping)
+                mapping.change(c)
+                c.apply_renumbering(mapping.rename)
                 print c.card(),
 
             if args.log != '':
