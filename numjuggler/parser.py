@@ -6,10 +6,10 @@ import warnings
 
 
 # regular expressions
-re_int = re.compile('\D{0,1}\d+') # integer with one prefix character
-re_ind = re.compile('\[.+\]')     # interior of square brackets for tally in lattices
+re_int = re.compile('\D{0,1}\d+')  # integer with one prefix character
+re_ind = re.compile('\[.+\]')  # interior of square brackets for tally in lattices
 re_rpt = re.compile('\d+[rRiI]')  # repitition syntax of MCNP input file
-re_prm = re.compile('((imp:n|imp:p|tmp)\s+\S+)')     # imp or tmp parameters in cell card
+re_prm = re.compile('((imp:n|imp:p|tmp)\s+\S+)')  # imp or tmp parameters in cell card
 re_prm = re.compile('[it]mp:*[npe]*[=\s]+\S+')
 
 fmt_d = lambda s: '{{:<{}d}}'.format(len(s))
@@ -139,8 +139,8 @@ class Card(object):
 
         else:
             # TODO: protect { and } in comment parts of the card.
-            tmpl = [] # part of template
-            inpt = [] # input, meaningful parts of the card.
+            tmpl = []  # part of template
+            inpt = []  # input, meaningful parts of the card.
             if mline.split()[0][:2] == 'fc':
                 # this is tally comment. It always in one line and is not delimited by & or $
                 i = mline[:80]
@@ -153,7 +153,7 @@ class Card(object):
                         tmpl.append(l)
                     else:
                         # entries optionally delimited from comments by $ or &
-                        d1 = l.find(' $') # requires that delimiters prefixed with space-
+                        d1 = l.find(' $')  # requires that delimiters prefixed with space-
                         d2 = l.find(' &')
                         if -1 < d1 and -1 < d2:
                             # both & and $ in the line. Use the most left
@@ -184,7 +184,7 @@ class Card(object):
 
         # in cell card:
         if self.ctype == CID.cell and 'like' not in inpt:
-            d['~'] = [] # float values in cells
+            d['~'] = []  # float values in cells
 
             tokens = inpt.replace('=', ' ').split()
             # material density
@@ -230,7 +230,7 @@ class Card(object):
         self._protect_nums()
         if self.ctype == CID.cell:
             inpt, vt = _split_cell(self.input)
-            self.name = vt[0][0] 
+            self.name = vt[0][0]
         elif self.ctype == CID.surface:
             inpt, vt, stype, scoef = _split_surface(self.input)
             self.stype = stype.lower()
@@ -267,8 +267,8 @@ class Card(object):
 
             if wrap:
                 tparts = self.template.split('{}')[1:]
-                newt = [''] # new template parts
-                newi = [] # new input parts
+                newt = ['']  # new template parts
+                newi = []  # new input parts
                 self.print_debug('card wrap=True', '')
                 for i, t in zip(inpt, tparts):
                     self.print_debug('    ' + repr(i) + repr(t), '')
@@ -277,8 +277,8 @@ class Card(object):
 
                     while len(i.rstrip()) > 79:
                         # first try to shift to left
-                        if i[:5] == ' '*5:
-                            i = ' '*5 + i.lstrip()
+                        if i[:5] == ' ' * 5:
+                            i = ' ' * 5 + i.lstrip()
                         if len(i.rstrip()) > 79:
                             # input i must be wrapped. Find proper place:
                             for dc in ' :':
@@ -320,7 +320,7 @@ class Card(object):
         if self.ctype in (CID.cell, CID.surface, CID.data):
             inpt = []
             for i in self.input:
-                indented = i[:5] == ' '*5
+                indented = i[:5] == ' ' * 5
                 # leave only one sep. space
                 i = ' '.join(i.split())
                 i = i.strip()
@@ -330,7 +330,7 @@ class Card(object):
                 for c in '(:':
                     i = i.replace(c + ' ', c)
                 if indented:
-                    i = ' '*5 + i
+                    i = ' ' * 5 + i
                 inpt.append(i)
                 self.print_debug(i, '')
             self.input = inpt
@@ -372,12 +372,12 @@ def _split_cell(input_):
     # list easily at \n positions.
     inpt = '\n'.join(input_)
 
-    vals = [] # list of values
-    fmts = [] # value format. It contains digits, thus will be inserted into inpt later.
+    vals = []  # list of values
+    fmts = []  # value format. It contains digits, thus will be inserted into inpt later.
     tp = '_'  # temporary placeholder for format specifiers
     if 'like ' in inpt.lower():
         # raise NotImplementedError()
-        warnings.warn('Parser for "like but" card, found on line {}, is not implemented'.format(self.pos))
+        warnings.warn('Parser for "like but" card, found on input {}, is not implemented'.format(input_))
     else:
         # cell card has usual format.
 
@@ -423,7 +423,7 @@ def _split_cell(input_):
 
         # replace values in parameters block. Values are prefixed with = or space(s)
         # Note that tmp and imp values must be hidden
-        t = ' '.join(parm).replace('=', ' ').split() # get rid of =.
+        t = ' '.join(parm).replace('=', ' ').split()  # get rid of =.
         while t:
             s = t.pop(0)
             parsed = False
@@ -434,7 +434,7 @@ def _split_cell(input_):
                 vf = fmt_d(vs)
 
                 # TODO fill value can be an array
-                vt = 'fill' if 'fill' in s.lower() else 'u' # this distinguish between fill and u is necessary to put explicit u=0 to cells filled with some other universe.
+                vt = 'fill' if 'fill' in s.lower() else 'u'  # this distinguish between fill and u is necessary to put explicit u=0 to cells filled with some other universe.
                 # vt = 'u'
                 parsed = True
                 # warn if there is possibility for an array following the fill keyword:
@@ -460,7 +460,7 @@ def _split_surface(input_):
     inpt = '\n'.join(input_)
     t = inpt.split()
 
-    vals = [] # like in split_cell()
+    vals = []  # like in split_cell()
     fmts = []
     tp = '_'
 
@@ -479,7 +479,7 @@ def _split_surface(input_):
         inpt = inpt.replace(ns, tp, 1)
         vals.append((int(ns), 'tr'))
         fmts.append(fmt_d(ns))
-        st = t.pop(0) 
+        st = t.pop(0)
     elif ns[0] == '-':
         # periodic surface
         ns = ns[1:]
@@ -541,7 +541,7 @@ def _split_data(input_):
     elif t[0][0].lower() == 'f' and t[0][1].isdigit():
         # FN card
         dtype = 'Fn'
-        ns = _get_int(t[0]) # tally number
+        ns = _get_int(t[0])  # tally number
         inpt = inpt.replace(ns, tp, 1)
         vals.append((int(ns), 'tal'))
         fmts.append(fmt_d(ns))
@@ -599,11 +599,11 @@ def is_commented(l):
     l = l.splitlines()[0]
     if 'c ' in l[0:6].lstrip().lower():
         res = True
-        #print 'is_com "c "',
+        # print 'is_com "c "',
     elif 'c' == l.lower():
         res = True
-        #print 'is_com "c"',
-    #print 'is_com', res
+        # print 'is_com "c"',
+    # print 'is_com', res
     return res
 
 def is_fc_card(l):
@@ -630,13 +630,13 @@ def get_cards(inp, debug=None):
     def _yield(card, ct, ln):
         return Card(card, ct, ln, debug)
 
-    cln = 0 # current line number. Used only for debug
+    cln = 0  # current line number. Used only for debug
     with open(inp, 'r') as f:
         # define the first block:
         # -----------------------
 
         # Next block ID
-        ncid = 0 # 0 is not used in card ID dictionary CID.
+        ncid = 0  # 0 is not used in card ID dictionary CID.
 
         # Parse the 1-st line. It can be message, cell or data block.
         l = f.next()
@@ -649,8 +649,8 @@ def get_cards(inp, debug=None):
                 l = f.next()
                 cln += 1
                 res.append(l)
-            yield _yield(res, CID.message, cln-1)  # message card
-            yield _yield(l, CID.blankline, cln)      # blank line
+            yield _yield(res, CID.message, cln - 1)  # message card
+            yield _yield(l, CID.blankline, cln)  # blank line
             l = f.next()
             cln += 1
             ncid = CID.title
@@ -703,7 +703,7 @@ def get_cards(inp, debug=None):
             elif l[0:5] == '     ' or cf:
                 # l is continuation line.
                 if cmnt:
-                    card += cmnt # previous comment lines, if any, belong to the current card.
+                    card += cmnt  # previous comment lines, if any, belong to the current card.
                     cmnt = []
                 card.append(l)
                 cf = l.find('&', 0, 81) > -1
@@ -720,7 +720,7 @@ def get_cards(inp, debug=None):
                     cmnt = []
                 card = [l]
 
-                cf = not is_fc_card(l) and l.find('&', 0, 81) > -1 # if tally comment card, i.e. started with fc, the & character does not mean continuation.
+                cf = not is_fc_card(l) and l.find('&', 0, 81) > -1  # if tally comment card, i.e. started with fc, the & character does not mean continuation.
         if card:
             yield _yield(card, ncid, cln - len(card) - len(cmnt))
         if cmnt:
@@ -743,9 +743,9 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
         xp = []
         yp = []
     else:
-        if len(pci) %2 == 1:
+        if len(pci) % 2 == 1:
             # augment with len(x) +1
-            pci = tuple(pci) + (len(x) + 1, )
+            pci = tuple(pci) + (len(x) + 1,)
         xe = []
         ye = []
         xp = []
@@ -759,10 +759,10 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
             i = i2
 
     # normalize yp
-    xpn = sum(map(lambda e: e**2, xp))
-    ypn = sum(map(lambda e: e**2, yp))
+    xpn = sum(map(lambda e: e ** 2, xp))
+    ypn = sum(map(lambda e: e ** 2, yp))
     if xpn > 0 and ypn > 0:
-        yp = map(lambda e: e*xpn/ypn, yp)
+        yp = map(lambda e: e * xpn / ypn, yp)
 
     msg = []
     res = []
@@ -772,14 +772,14 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
             res.append(True)
             msg.append('exact match')
         else:
-            n = 0 
+            n = 0
             for xx, yy in zip(xl, yl):
                 if xx == yy:
                     r = True
                 elif xx != 0:
-                    r = abs((xx - yy)/xx) <= re
+                    r = abs((xx - yy) / xx) <= re
                 else:
-                    r = abs((xx - yy)/xx) <= re
+                    r = abs((xx - yy) / xx) <= re
                 if not r:
                     m = 'diff at {}'.format(n)
                     break
@@ -797,9 +797,9 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
         result = True
     print 'are_equal', x, y, re, pci
     for xl, yl, r, m in zip([xe, xp], [ye, yp], res, msg):
-        print ' '*5, m, r, ':'
-        print ' '*15, xl
-        print ' '*15, yl
+        print ' ' * 5, m, r, ':'
+        print ' ' * 15, xl
+        print ' ' * 15, yl
         if r:
             break
     return result
