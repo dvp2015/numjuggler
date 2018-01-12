@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
+from __future__ import division, print_function
+
 import argparse as ap
 import os.path
-from numjuggler import numbering as mn
-from numjuggler import parser as mp
-from numjuggler import nogq
+#from builtins import map, str
+
+#from past.utils import old_div
+
+from numjuggler import nogq, numbering as mn, parser as mp
 
 
 # help messages already wrapped:
@@ -103,7 +107,6 @@ extr:
     
 nogq:
     Under development. Replaces GQ cards representing a cylinder with c/x plut tr card."""
-
 
 dhelp['map'] = """
 MAP FILE GENERAL INFO
@@ -241,7 +244,9 @@ original MCNP input file name must be given as command line option, the modified
 MCNP input file is written to std.out." """[1:]
 
 # dhelp keys as a string, with the last ',' replaced with 'or' for more humanity
-dhelp_keys = str(dhelp.keys())[1:-1][::-1].replace(',', ' ro ', 1)[::-1]
+dhelp_keys = str(list(dhelp.keys()))[1:-1][::-1].replace(',', ' ro'
+                                                              ''
+                                                              ' ', 1)[::-1]
 
 epilog = """
 Specify {} after -h for additional help.
@@ -249,14 +254,19 @@ Specify {} after -h for additional help.
 
 
 def main():
-    p = ap.ArgumentParser(prog='numjuggler', description=descr, epilog=epilog) # formatter_class=ap.RawTextHelpFormatter)
+    p = ap.ArgumentParser(prog='numjuggler', description=descr,
+                          epilog=epilog)  # formatter_class=ap.RawTextHelpFormatter)
     p.add_argument('inp', help='MCNP input file')
     p.add_argument('-c', help=help_c, type=str, default='0')
     p.add_argument('-s', help=help_s.format('Surface'), type=str, default='0')
     p.add_argument('-m', help=help_s.format('Material'), type=str, default='0')
     p.add_argument('-u', help=help_s.format('Universe'), type=str, default='0')
-    p.add_argument('--map', type=str, help='File, containing descrption of mapping. When specified, options "-c", "-s", "-m" and "-u" are ignored.', default='')
-    p.add_argument('--mode', type=str, help='Execution mode, "renum" by default', choices=['renum', 'info', 'wrap', 'uexp', 'rems', 'split', 'mdupl', 'sdupl', 'msimp', 'extr', 'nogq'], default='renum')
+    p.add_argument('--map', type=str,
+                   help='File, containing descrption of mapping. When specified, options "-c", "-s", "-m" and "-u" are ignored.',
+                   default='')
+    p.add_argument('--mode', type=str, help='Execution mode, "renum" by default',
+                   choices=['renum', 'info', 'wrap', 'uexp', 'rems', 'split', 'mdupl', 'sdupl', 'msimp', 'extr',
+                            'nogq'], default='renum')
     p.add_argument('--debug', help='Additional output for debugging', action='store_true')
     p.add_argument('--log', type=str, help='Log file.', default='')
 
@@ -267,11 +277,11 @@ def main():
     if harg.h:
         if harg.h == 'gen':
             p.print_help()
-        elif harg.h in dhelp.keys():
-            print dhelp[harg.h]
+        elif harg.h in dhelp:
+            print(dhelp[harg.h])
         else:
-            print 'No help for ', harg.h
-            print 'Available help options: ', dhelp_keys
+            print('No help for ', harg.h)
+            print('Available help options: ', dhelp_keys)
     else:
         args = p.parse_args(clo)
         if args.debug:
@@ -283,7 +293,7 @@ def main():
             # print 'Debug info written to ', debug_file_name
             # print
             debuglog = open(debug_file_name, 'w')
-            print >> debuglog, 'command line arguments:', args
+            print('command line arguments:', args, file=debuglog)
         else:
             debuglog = None
 
@@ -291,7 +301,7 @@ def main():
         cards = list(mp.get_cards(args.inp, debuglog))
 
         if args.mode == 'info':
-            indent = ' '*8
+            indent = ' ' * 8
             for c in cards:
                 c.get_values()
             d = mn.get_numbers(cards)
@@ -302,46 +312,46 @@ def main():
                 types = ['cel', 'sur', 'mat', 'u', 'tal', 'tr']
             for t in types:
                 nset = set(d.get(t, []))
-                print '-'* 40, t, len(nset)
+                print('-' * 40, t, len(nset))
                 rp = None
                 for r1, r2 in mn._get_ranges_from_set(nset):
-                    print '{}{:>3s}'.format(indent, t[0]),
+                    print('{}{:>3s}'.format(indent, t[0]), end=' ')
                     if r1 == r2:
                         rs = ' {}'.format(r1)
                     else:
                         rs = ' {} -- {}'.format(r1, r2)
-                    if rp != None:
+                    if rp is not None:
                         fr = '{}'.format(r1 - rp - 1)
                     else:
                         fr = ''
                     ur = '{}'.format(r2 - r1 + 1)
-                    print '{:<30s} {:>8s} {:>8s}'.format(rs, ur, fr)
+                    print('{:<30s} {:>8s} {:>8s}'.format(rs, ur, fr))
                     rp = r2
         elif args.mode == 'uexp':
             for c in cards:
                 if c.ctype == mp.CID.cell:
                     c.get_values()
-                    if 'u' not in map(lambda t: t[1], c.values):
+                    if 'u' not in [t[1] for t in c.values]:
                         c.input[-1] += ' u=0'
-                print c.card(),
+                print(c.card(), end=' ')
 
         elif args.mode == 'wrap':
             for c in cards:
-                print c.card(True),
+                print(c.card(True), end=' ')
 
         elif args.mode == 'rems':
             for c in cards:
                 c.remove_spaces()
-                print c.card(),
+                print(c.card(), end=' ')
 
         elif args.mode == 'split':
             # split input file into blocks
             fp = {}
             fp[mp.CID.message] = open(args.inp + '.1message', 'w')
-            fp[mp.CID.title]   = open(args.inp + '.2title', 'w')
-            fp[mp.CID.cell]    = open(args.inp + '.3cells', 'w')
+            fp[mp.CID.title] = open(args.inp + '.2title', 'w')
+            fp[mp.CID.cell] = open(args.inp + '.3cells', 'w')
             fp[mp.CID.surface] = open(args.inp + '.4surfaces', 'w')
-            fp[mp.CID.data]    = open(args.inp + '.5data', 'w')
+            fp[mp.CID.data] = open(args.inp + '.5data', 'w')
             cct = cards[0].ctype
             cmnt = None
             for c in cards:
@@ -355,17 +365,16 @@ def main():
                     cmnt = c
                 else:
                     if cmnt:
-                        print >> fff, cmnt.card(),
+                        print(cmnt.card(), end=' ', file=fff)
                         cmnt = None
                     if c.ctype != mp.CID.blankline:
                         # do not print blank lines
-                        print >> fff, c.card(),
+                        print(c.card(), end=' ', file=fff)
             # do not forget the last comment
             if cmnt:
-                print >> fff, cmnt.card(),
+                print(cmnt.card(), end=' ', file=fff)
 
-
-            for fff in fp.values():
+            for fff in list(fp.values()):
                 fff.close()
 
         elif args.mode == 'mdupl':
@@ -376,10 +385,10 @@ def main():
                 c.get_values()
                 if c.ctype == mp.CID.data and c.dtype == 'Mn':
                     if c.values[0][0] not in mset:
-                        print c.card(),
+                        print(c.card(), end=' ')
                         mset.add(c.values[0][0])
                 else:
-                    print c.card(),
+                    print(c.card(), end=' ')
 
         elif args.mode == 'sdupl':
             # report duplicate (close) surfaces.
@@ -387,30 +396,30 @@ def main():
             us = {}
 
             #  surface types coefficients that can only be proportional
-            pcl =  {
-                    'p': (0,),
-                    'sq': (0, 7),
-                    'gq': (0,)
-                    }
+            pcl = {
+                'p': (0,),
+                'sq': (0, 7),
+                'gq': (0,)
+            }
             for c in cards:
                 c.get_values()
                 if c.ctype == mp.CID.surface:
                     # compare this surface with all previous and if unique, add to dict
-                    print '--surface', c.card(),
+                    print('--surface', c.card(), end=' ')
                     ust = us.get(c.stype, {})
                     if ust == {}:
                         us[c.stype] = ust
-                    for sn, s in ust.items():
+                    for sn, s in list(ust.items()):
                         if s.stype == c.stype:
                             # current surface card and s have the same type. Compare coefficients:
                             if mp.are_close_lists(s.scoefs, c.scoefs, pci=pcl.get(c.stype, [])):
-                                print 'is close to {}'.format(sn)
+                                print('is close to {}'.format(sn))
                                 break
                     else:
                         # add c to us:
                         cn = c.values[0][0]  # surface name
                         ust[cn] = c
-                        print 'is unique'
+                        print('is unique')
 
         elif args.mode == 'msimp':
             # simplify material cards
@@ -423,16 +432,16 @@ def main():
                         for i in c.input[1:]:
                             inp.append('c msimpl ' + i)
                         c.input = inp
-                print c.card(),
+                print(c.card(), end=' ')
 
         elif args.mode == 'extr':
             # extract cell specified in -c keyword and necessary materials, and surfaces.
             cset = set(map(int, args.c.split()))
             # first, get all surfaces needed to represent the cn cell.
-            sset = set() # surfaces
-            mset = set() # material
-            tset = set() # transformations
-            uset = set() # universe
+            sset = set()  # surfaces
+            mset = set()  # material
+            tset = set()  # transformations
+            uset = set()  # universe
 
             # first run through cards: define filling
             for c in cards:
@@ -467,29 +476,29 @@ def main():
             blk = None
             for c in cards:
                 if c.ctype == mp.CID.title:
-                    print c.card(),
+                    print(c.card(), end=' ')
                 if c.ctype == mp.CID.cell and c.name in cset:
-                    print c.card(),
+                    print(c.card(), end=' ')
                     blk = c.ctype
                 if c.ctype == mp.CID.surface:
                     if blk == mp.CID.cell:
-                        print
+                        print()
                         blk = c.ctype
-                    if  c.name in sset:
-                        print c.card(),
-                if c.ctype == mp.CID.data :
+                    if c.name in sset:
+                        print(c.card(), end=' ')
+                if c.ctype == mp.CID.data:
                     if blk != c.ctype:
-                        print
+                        print()
                         blk = c.ctype
                     if c.dtype == 'Mn' and c.values[0][0] in mset:
-                        print c.card(),
+                        print(c.card(), end=' ')
                     if c.dtype == 'TRn' and c.values[0][0] in tset:
-                        print c.card(),
-        
+                        print(c.card(), end=' ')
+
         elif args.mode == 'nogq':
-            vfmt = ' {:15.8e}'*3
-            tfmt = 'tr{} 0 0 0 ' + ('\n     ' + vfmt)*3
-            trd = {} 
+            vfmt = ' {:15.8e}' * 3
+            tfmt = 'tr{} 0 0 0 ' + ('\n     ' + vfmt) * 3
+            trd = {}
             # replace GQ cylinders with c/x + tr 
             for c in cards:
                 crd = c.card()
@@ -501,10 +510,10 @@ def main():
                         crd = crd[:-1] + '$ a^2={:12.6e} c={:12.6e}\n'.format(a2, g + a2)
                         if abs((g + a2) / a2) < 1e-6:
                             # this is a cylinder. Comment original card and write another one
-                            R, x0, i, j = nogq.cylinder(p, a2, g, k)                            
+                            R, x0, i, j = nogq.cylinder(p, a2, g, k)
                             # add transformation set
-                            tr = tuple(i) + tuple(j) + tuple(k) 
-                            for k, v in trd.items():
+                            tr = tuple(i) + tuple(j) + tuple(k)
+                            for k, v in list(trd.items()):
                                 if tr == v:
                                     trn = k
                                     break
@@ -514,12 +523,12 @@ def main():
                             # replace surface card
                             crd = 'c ' + '\nc '.join(c.card().splitlines())
                             crd += '\n{} {} c/z {:15.8e} 0 {:15.8e}\n'.format(c.name, trn, x0, R)
-                print crd,
+                print(crd, end=' ')
                 if trd and c.ctype == mp.CID.blankline:
                     # this is blankline after surfaces. Put tr cards here
                     for k, v in sorted(trd.items()):
-                        ijk = (k,) + v 
-                        print tfmt.format(*ijk)
+                        ijk = (k,) + v
+                        print(tfmt.format(*ijk))
                     trd = {}
 
 
@@ -538,20 +547,20 @@ def main():
                 else:
                     di = {}
 
-
                 dm = {}
                 for t in ['cel', 'sur', 'mat', 'u']:
                     dn = getattr(args, t[0])
                     if dn == 'i':
-                        dm[t] = [None, di[t]] # None to raise an error, when None will be added to an int. (Indexes should be defined to all numbers, thus the default mapping should not be used.
+                        dm[t] = [None, di[
+                            t]]  # None to raise an error, when None will be added to an int. (Indexes should be defined to all numbers, thus the default mapping should not be used.
                     else:
-                        dm[t] = [int(dn), [(0, 0, 0)]] # do not modify zero material
+                        dm[t] = [int(dn), [(0, 0, 0)]]  # do not modify zero material
 
-            mapping = mn.LikeFunction(dm, args.log!='')
+            mapping = mn.LikeFunction(dm, args.log != '')
 
             for c in cards:
                 c.apply_map(mapping)
-                print c.card(),
+                print(c.card(), end='')
 
             if args.log != '':
                 mapping.write_log_as_map(args.log)
@@ -559,4 +568,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

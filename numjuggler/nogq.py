@@ -1,14 +1,18 @@
 """
 Functions to convert an arbitrary GQ cylinder into C/X+TR-defined cylinder.
 """
+from __future__ import division
+from __future__ import print_function
 
 # For a given GQ card print correspondent cx and tr.
+from builtins import map
+from past.utils import old_div
 import numpy
 
 def get_k(p):
     # define a2, c and vector k
     ABC = p[0:3]
-    DEF = p[3:6]/2.
+    DEF = old_div(p[3:6],2.)
 
     # define a2. Its definition deends on whether all DEF are zero or not.
     if (DEF == 0.).all():
@@ -18,7 +22,7 @@ def get_k(p):
         # at least one of DEF is non-zero.
         ii = abs(DEF).argmax()
         iv = DEF[ii]
-        a2 = numpy.roll(ABC, 1)[ii] - DEF[DEF != iv].prod()/iv 
+        a2 = numpy.roll(ABC, 1)[ii] - old_div(DEF[DEF != iv].prod(),iv) 
 
     # expression for gamma holds for any ABC and DEF:
     g = ABC.sum() - 3.0*a2
@@ -29,7 +33,7 @@ def get_k(p):
     k = numpy.array((A - a2 + D + F,
                      D + B - a2 + E,
                      F + E + C - a2))
-    k = k / (k**2).sum()**0.5
+    k = old_div(k, (k**2).sum()**0.5)
 
     # DEFz = (DEF == 0.).sum() # number of zero elements
     # if DEFz == 3:
@@ -74,7 +78,7 @@ def cylinder(p, a2, g, k):
     # vector i of the 'simple' CS
     i = p[6:9] # G, H, J
     GHJ2 = (i**2).sum()
-    i = i / GHJ2**0.5 # normalize
+    i = old_div(i, GHJ2**0.5) # normalize
 
     # radius
     r2 = GHJ2 /4./a2 - K
@@ -107,7 +111,7 @@ def get_a2(p):
         # 
         pass
     cdic = {}
-    for k, a2 in a2dic.items():
+    for k, a2 in list(a2dic.items()):
         c = ABC - 2.0*v
     return a2, c
 
@@ -123,11 +127,11 @@ def is_gq_cylinder(p):
 
     # A, B and C are non-negative
     if a < 0 or b < 0 or c < 0:
-        print ' not a cylinder since a, b or c is negative: ',  p[0:3]
+        print(' not a cylinder since a, b or c is negative: ',  p[0:3])
         raise ValueError()
 
     if not numpy.isclose(d*e*f, -8.*(1.-a)*(1.-b)*(1.-c)):
-        print ' D*E*F differs from -8(1-A)(1-B)(1-C)' , p
+        print(' D*E*F differs from -8(1-A)(1-B)(1-C)' , p)
         raise ValueError()
 
     return 1.0/p[0:3].sum() * p
@@ -173,12 +177,12 @@ def skprime(c):
     elif y == 1.:
         # c coincides with y-axis. Use z to define j'
         j = numpy.cross(k, c)
-        j = j / numpy.dot(j, j)**0.5
+        j = old_div(j, numpy.dot(j, j)**0.5)
         k = numpy.cross(c, j)
     else:
         # c coincides with z axis. Use j to define new k'
         k = numpy.cross(c, j)
-        k = k / numpy.dot(k, k)**0.5
+        k = old_div(k, numpy.dot(k, k)**0.5)
         j = numpy.cross(k, c)
     return c, j, k
 
@@ -213,7 +217,7 @@ def gq_radius(p, o):
     rrr = numpy.array((-k, xo**2.*a, yo**2.*b, zo**2.*c, xo*yo*d, xo*zo*f, yo*zo*e))
     r2 = rrr.sum()
     if r2 < 0:
-        print 'Radius is imaginary: r^2=', r2
+        print('Radius is imaginary: r^2=', r2)
     return r2**0.5
 
 
@@ -270,7 +274,7 @@ def get_gq_params(l):
     Returns a numpy array of GQ card parameters. The string l represents (a part of) the GQ card.
     """
     p, pl = l.lower().split('gq')
-    return numpy.array( map(float, pl.split()))
+    return numpy.array( list(map(float, pl.split())))
 
 
 
@@ -303,7 +307,7 @@ if __name__ == '__main__':
     po = None
     for xo0 in [1e-4, 791.866]:
 
-        print 'xo0', xo0, '***'*20
+        print('xo0', xo0, '***'*20)
 
         for n in [532, 25099, 25100, 25177, 25185, 25183, 25187, 25179, 25181]:
         # for n in [529, 528, 517, 520, 529]:
@@ -330,7 +334,7 @@ if __name__ == '__main__':
             # print '-'*20
 
             r = gq_cylinder(p) 
-            print r
+            print(r)
 
 
 

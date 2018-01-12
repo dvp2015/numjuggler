@@ -1,6 +1,12 @@
 """
 Functions for parsing MCNP input files.
 """
+from __future__ import division
+from __future__ import print_function
+from builtins import map
+from builtins import zip
+from past.utils import old_div
+from builtins import object
 import re
 import warnings
 
@@ -51,11 +57,11 @@ class __CIDClass(object):
         """
         Return the name of the card type by its index.
         """
-        for k, v in cls.__dict__.items():
+        for k, v in list(cls.__dict__.items()):
             if '__' not in k and v == cid:
                 return k
         else:
-            print 'No attribute with name', cid
+            print('No attribute with name', cid)
             raise ValueError()
 
 CID = __CIDClass()
@@ -112,15 +118,15 @@ class Card(object):
     def print_debug(self, comment, key='tihv'):
         d = self.debug
         if d:
-            print >> d, 'Line {}, {} card. {}'.format(self.pos, CID.get_name(self.ctype), comment)
+            print('Line {}, {} card. {}'.format(self.pos, CID.get_name(self.ctype), comment), file=d)
             if 't' in key:
-                print >> d, '    template:', repr(self.template)
+                print('    template:', repr(self.template), file=d)
             if 'i' in key:
-                print >> d, '    input:   ', self.input
+                print('    input:   ', self.input, file=d)
             if 'h' in key:
-                print >> d, '    hidden:  ', self.hidden
+                print('    hidden:  ', self.hidden, file=d)
             if 'v' in key:
-                print >> d, '    values:  ', self.values
+                print('    values:  ', self.values, file=d)
 
     def get_input(self):
         """
@@ -300,10 +306,10 @@ class Card(object):
         if self.input:
             # put values back to meaningful parts:
             inpt = '\n'.join(self.input)
-            inpt = inpt.format(*map(lambda t: t[0], self.values))
+            inpt = inpt.format(*[t[0] for t in self.values])
 
             # put back hidden parts:
-            for k, vl in self.hidden.items():
+            for k, vl in list(self.hidden.items()):
                 for v in vl:
                     inpt = inpt.replace(k, v, 1)
             inpt = inpt.split('\n')
@@ -482,7 +488,7 @@ def _split_cell(input_):
                 parsed = True
                 # warn if there is possibility for an array following the fill keyword:
                 if 'fill' is s.lower() and 'lat' in ''.join(parm).lower():
-                    print "WARNING: fill keyword followed by an array cannot be parsed"
+                    print("WARNING: fill keyword followed by an array cannot be parsed")
 
             if parsed:
                 inpt = inpt.replace(vs, tp, 1)
@@ -537,7 +543,7 @@ def _split_surface(input_):
         raise ValueError(input_, inpt, ns)
 
     # define coefficients
-    scoef = map(float, t)
+    scoef = list(map(float, t))
 
     for f in fmts:
         inpt = inpt.replace(tp, f, 1)
@@ -674,7 +680,7 @@ def get_cards(inp, debug=None):
         return Card(card, ct, ln, debug)
 
     cln = 0  # current line number. Used only for debug
-    with open(inp, 'r') as f:
+    with open(inp, 'r', encoding="ascii") as f:
         # define the first block:
         # -----------------------
 
@@ -682,19 +688,19 @@ def get_cards(inp, debug=None):
         ncid = 0  # 0 is not used in card ID dictionary CID.
 
         # Parse the 1-st line. It can be message, cell or data block.
-        l = f.next()
+        l = next(f)
         cln += 1
         kw = l.lower().split()[0]
         if 'message:' == kw:
             # read message block right here
             res = [l]
             while not is_blankline(l):
-                l = f.next()
+                l = next(f)
                 cln += 1
                 res.append(l)
             yield _yield(res, CID.message, cln - 1)  # message card
             yield _yield(l, CID.blankline, cln)  # blank line
-            l = f.next()
+            l = next(f)
             cln += 1
             ncid = CID.title
         elif 'continue' == kw:
@@ -802,10 +808,10 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
             i = i2
 
     # normalize yp
-    xpn = sum(map(lambda e: e ** 2, xp))
-    ypn = sum(map(lambda e: e ** 2, yp))
+    xpn = sum([e ** 2 for e in xp])
+    ypn = sum([e ** 2 for e in yp])
     if xpn > 0 and ypn > 0:
-        yp = map(lambda e: e * xpn / ypn, yp)
+        yp = [e * xpn / ypn for e in yp]
 
     msg = []
     res = []
@@ -820,9 +826,9 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
                 if xx == yy:
                     r = True
                 elif xx != 0:
-                    r = abs((xx - yy) / xx) <= re
+                    r = abs(old_div((xx - yy), xx)) <= re
                 else:
-                    r = abs((xx - yy) / xx) <= re
+                    r = abs(old_div((xx - yy), xx)) <= re
                 if not r:
                     m = 'diff at {}'.format(n)
                     break
@@ -838,11 +844,11 @@ def are_close_lists(x, y, re=1e-4, pci=[]):
 
     else:
         result = True
-    print 'are_equal', x, y, re, pci
+    print('are_equal', x, y, re, pci)
     for xl, yl, r, m in zip([xe, xp], [ye, yp], res, msg):
-        print ' ' * 5, m, r, ':'
-        print ' ' * 15, xl
-        print ' ' * 15, yl
+        print(' ' * 5, m, r, ':')
+        print(' ' * 15, xl)
+        print(' ' * 15, yl)
         if r:
             break
     return result
